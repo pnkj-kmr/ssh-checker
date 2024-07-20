@@ -1,0 +1,26 @@
+[
+  {
+    "input": {
+      "host": "127.0.0.1",
+      "port": 22,
+      "username": "admin",
+      "password": "admin",
+      "timeout": 30,
+      "commands": ["updatime", "ls"]
+    },
+    "ok": false,
+    "error": "dial tcp 127.0.0.1:22: connect: connection refused"
+  },
+  {
+    "input": {
+      "host": "192.168.1.1",
+      "port": 8022,
+      "username": "admin",
+      "password": "admin",
+      "timeout": 30,
+      "commands": ["updatime", "ls"]
+    },
+    "ok": false,
+    "error": "dial tcp 192.168.1.1:8022: connect: connection refused"
+  }
+]
