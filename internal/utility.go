@@ -9,10 +9,10 @@ func GetCommandLineInputs() (i, o, usr, pwd, key, kh string, p, t, w int) {
 	iFile := flag.String("f", "input.json", "input file name")
 	oFile := flag.String("o", "output.json", "output file name")
 	noWorkers := flag.Int("w", 4, "number of workers")
-	port := flag.Int("p", 22, "default ssh port")
+	port := flag.Int("p", 22, "generic default ssh port")
 	timeout := flag.Int("t", 30, "timeout [secs]")
-	user := flag.String("usr", "admin", "username for connection")
-	passwd := flag.String("passwd", "admin", "password for connection")
+	user := flag.String("usr", "admin", "generic username for connection")
+	passwd := flag.String("passwd", "admin", "generic password for connection")
 	key_path := flag.String("rsa", "", ".ssh file path: ($HOME)/.ssh/id_rsa")
 	hosts_path := flag.String("knownhosts", "", ".ssh known hosts file path:($HOME)/.ssh/known_hosts")
 
