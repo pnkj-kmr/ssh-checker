@@ -2,7 +2,7 @@
 
 ssh-checker helps to run multiple commands on end router (switch) in bulk.
 
-_Basically, if you want to run few commands on end router and you want to for multiple routers then ssh-checker helps to perform the action with input file and generate a output file as result_
+_Basically, if you want to run few commands on end router and you want to do for multiple routers then ssh-checker helps to perform the action with input file and generate a output file as result_
 
 ### HOW TO USE
 
