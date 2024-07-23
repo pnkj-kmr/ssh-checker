@@ -12,58 +12,65 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func doSSH(input Input, rsa, kh string, out chan<- []byte) (err error) {
-	routineStarted := false
+func doSSH(input Input, rsa, kh string, results chan<- []byte, errors chan<- string) {
 	defer func() {
-		if !routineStarted {
-			close(out)
-		}
+		close(results)
+		close(errors)
 	}()
 
-	// TODO - need to pass key and hosts file
-	client, err := dialConnection(input, rsa, kh)
+	// dialing the ssh connection
+	client, err := dialConn(input, rsa, kh)
 	if err != nil {
 		log.Println("Connection Error", input.Host, err.Error())
-		return err
+		errors <- err.Error()
+		return
 	}
 	defer client.Close()
 
-	session, err := client.NewSession()
-	if err != nil {
-		log.Println("Session Error", input.Host, err.Error())
-		return err
-	}
-	defer session.Close()
-
-	stdout, err := session.StdoutPipe()
-	if err != nil {
-		log.Println("Session outpipe", input.Host, err.Error())
-		return err
-	}
-
-	stderr, err := session.StderrPipe()
-	if err != nil {
-		log.Println("Session errpipe", input.Host, err.Error())
-		return err
-	}
-
-	// calling listeners
-	outChan := make(chan []byte)
-	errChan := make(chan []byte)
-	outputListener(stdout, stderr, outChan, errChan, out)
-	routineStarted = true
-
 	for _, cmd := range input.Commands {
-		if err := session.Run(cmd); err != nil {
-			log.Println("Command Error", input.Host, err.Error())
-			return err
-		}
-	}
+		log.Println("Running cmd --- ", cmd, input.Host)
 
-	return nil
+		// creating command based session and closing old once completed
+		session, err := client.NewSession()
+		if err != nil {
+			log.Println("Session Error", cmd, input.Host, err.Error())
+			errors <- err.Error()
+			break
+		}
+		defer session.Close()
+
+		// getting output and errors pipe from sessions
+		stdout, err := session.StdoutPipe()
+		if err != nil {
+			log.Println("Session outpipe", cmd, input.Host, err.Error())
+			errors <- err.Error()
+			break
+		}
+		stderr, err := session.StderrPipe()
+		if err != nil {
+			log.Println("Session errpipe", cmd, input.Host, err.Error())
+			errors <- err.Error()
+			break
+		}
+
+		// Getting result from command over session
+		str := fmt.Sprintf("%s [%s]", input.Host, cmd)
+		outCh, errCh, isCompleted := make(chan []byte), make(chan []byte), make(chan struct{})
+		go putDataToChan(outCh, stdout, fmt.Sprintf("Output %s", str))
+		go putDataToChan(errCh, stderr, fmt.Sprintf("Err %s", str))
+		go outputListener(str, isCompleted, results, errors, outCh, errCh)
+
+		// Calling run func to execure the single command
+		if err := session.Run(cmd); err != nil {
+			log.Println("Command Error", cmd, input.Host, err.Error())
+			errors <- err.Error()
+			break
+		}
+		<-isCompleted
+	}
 }
 
-func dialConnection(input Input, f, kh string) (client *ssh.Client, err error) {
+func dialConn(input Input, f, kh string) (client *ssh.Client, err error) {
 	homeDir := os.Getenv("HOME")
 	if f == "" {
 		if homeDir == "" {
@@ -127,76 +134,45 @@ func dialConnection(input Input, f, kh string) (client *ssh.Client, err error) {
 	return
 }
 
-func outputListener(stdout, stderr io.Reader, outChan, errChan chan []byte, out chan<- []byte) {
-	go func(outChan chan<- []byte) {
-		defer close(outChan)
-		log.Println("StdOut started")
-		scanner := bufio.NewScanner(stdout)
-		for {
-			if tkn := scanner.Scan(); tkn {
-				rcv := scanner.Bytes()
-				log.Println("StdOut:", rcv)
-				outChan <- rcv
-			} else {
-				if scanner.Err() != nil {
-					outChan <- []byte(scanner.Err().Error())
-					log.Println("StdOut:", scanner.Err().Error())
-				} else {
-					log.Println("StdOut: io.EOF")
-				}
-				break
-			}
-		}
-		log.Println("StdOut exited")
-	}(outChan)
+func putDataToChan(ch chan<- []byte, read io.Reader, t string) {
+	defer close(ch)
+	log.Println(t, "started")
+	scanner := bufio.NewScanner(read)
+	for scanner.Scan() {
+		rcv := scanner.Bytes()
+		log.Println(t, ":", string(rcv))
+		ch <- rcv
+	}
+	if err := scanner.Err(); err != nil {
+		ch <- []byte(scanner.Err().Error())
+		log.Println(t, ":", scanner.Err().Error())
+	} else {
+		log.Println(t, ": io.EOF")
+	}
+	log.Println(t, " exited")
+}
 
-	go func(errChan chan<- []byte) {
-		defer close(errChan)
-		log.Println("StdErr started")
-		scanner := bufio.NewScanner(stderr)
-		for {
-			if tkn := scanner.Scan(); tkn {
-				rcv := scanner.Bytes()
-				// raw := make([]byte, len(rcv))
-				// copy(raw, rcv)
-				log.Println("StdErr:", rcv)
-				errChan <- rcv
-			} else {
-				if scanner.Err() != nil {
-					errChan <- []byte(scanner.Err().Error())
-					log.Println("StdErr:", scanner.Err().Error())
-				} else {
-					errChan <- []byte(scanner.Text())
-					log.Println("StdErr: io.EOF")
-				}
-				break
+func outputListener(s string, isCompleted chan<- struct{}, results chan<- []byte, errors chan<- string, outCh <-chan []byte, errCh <-chan []byte) {
+	var o, e []byte
+	outOk, errOk := true, true
+	log.Println(s, "Listener entering ...")
+	for {
+		select {
+		case o, outOk = <-outCh:
+			if outOk {
+				results <- o
+			}
+		case e, errOk = <-errCh:
+			if errOk {
+				errors <- string(e)
 			}
 		}
-		log.Println("StdErr exited")
-	}(errChan)
-
-	go func(outChan, errChan <-chan []byte, out chan<- []byte) {
-		defer close(out)
-		log.Println("Listener input ...")
-		var outOk, errOk bool
-		var out1, err1 []byte
-		for {
-			select {
-			case out1, outOk = <-outChan:
-				if outOk {
-					out <- out1
-				}
-			case err1, errOk = <-errChan:
-				if errOk {
-					out <- err1
-				}
-			}
-			if (!outOk) && (!errOk) {
-				break
-			}
+		if (!outOk) && (!errOk) {
+			break
 		}
-		log.Println("Listener output ...")
-	}(outChan, errChan, out)
+	}
+	log.Println(s, "Listener exit")
+	isCompleted <- struct{}{}
 }
 
 // func checkKnownHosts() ssh.HostKeyCallback {

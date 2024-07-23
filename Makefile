@@ -1,6 +1,9 @@
 keygen:
 	ssh-keygen -t rsa -b 4096
 
+build_linux:
+	env GOOS=linux GOARCH=386 go build -o sshchecker main.go
+
 b:
 	go build -o sshchecker main.go
 

@@ -2,7 +2,6 @@ package internal
 
 import (
 	"flag"
-	"fmt"
 	"log"
 )
 
@@ -42,50 +41,35 @@ func Execute(input Input, usr, passwd, rsa, kh string, p, t int) (out Output) {
 	}
 
 	// calling main ssh executor func
-	outputChannel := make(chan []byte)
-	err := doSSH(input, rsa, kh, outputChannel)
-	if err == nil {
-		out.Ok = true
-		err = fmt.Errorf("")
-	}
-	out.Err = err.Error()
+	outCh := make(chan []byte)
+	errCh := make(chan string)
+	go doSSH(input, rsa, kh, outCh, errCh)
 
-	// binding result to output
+	// binding result to output and errors if any
 	var result []string
-	var str string
-	for x := range outputChannel {
-		str = string(x)
-		result = append(result, str)
+	var errors []string
+	var x []byte
+	var e string
+	outOk, errOk := true, true
+	for {
+		select {
+		case x, outOk = <-outCh:
+			if outOk {
+				result = append(result, string(x))
+			}
+		case e, errOk = <-errCh:
+			if errOk {
+				errors = append(errors, e)
+			}
+		}
+		if (!outOk) && (!errOk) {
+			break
+		}
 	}
+
+	// forming result Output
 	out.I = input
+	out.Err = errors
 	out.O = result
 	return
 }
-
-/**
-
-// calling main execution function
-		outputChannel := make(chan []byte)
-		err = controllers.Execute(payload.Src, payload.Dst, payload.Proto, outputChannel)
-		if err != nil {
-			errMsg := fmt.Sprintf("Error: %s", err.Error())
-			utils.L.Error("Error", zap.String("err", errMsg))
-			// skiping error if occurs such cases
-			skipError := "remote command exited without exit status or exit signal"
-			if !strings.Contains(errMsg, skipError) {
-				_ = writeToWS(ws, mt, errMsg, false, true)
-			}
-		}
-		// writing into ws
-		var str string
-		for x := range outputChannel {
-			str = string(x)
-			ok, str := checkUnwantedData(str)
-			if ok {
-				_ = writeToWS(ws, mt, maskingIP(str, payload.Dst, payload.Proto), false, false)
-			}
-		}
-		_ = writeToWS(ws, mt, "", true, false)
-
-
-*/

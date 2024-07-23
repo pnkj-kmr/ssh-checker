@@ -21,7 +21,6 @@ type Input struct {
 // Output represent the output
 type Output struct {
 	I   Input    `json:"input"`
-	Ok  bool     `json:"ok"`
-	Err string   `json:"error,omitempty"`
+	Err []string `json:"error,omitempty"`
 	O   []string `json:"output,omitempty"`
 }
