@@ -12,62 +12,44 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func doSSH(input Input, rsa, kh string, results chan<- []byte, errors chan<- string) {
-	defer func() {
-		close(results)
-		close(errors)
-	}()
+func doSSH(input Input, rsa, kh string) (results []string, errors []string) {
 
 	// dialing the ssh connection
 	client, err := dialConn(input, rsa, kh)
 	if err != nil {
-		log.Println("Connection Error", input.Host, err.Error())
-		errors <- err.Error()
+		log.Println(input.Host, "Connection Error", err.Error())
+		errors = append(errors, err.Error())
 		return
 	}
 	defer client.Close()
 
+	// sshCompleted := make(chan struct{})
+	// total_commands := len(input.Commands)
 	for _, cmd := range input.Commands {
-		log.Println("Running cmd --- ", cmd, input.Host)
+		log.Println(input.Host, "Running cmd ---", cmd)
 
 		// creating command based session and closing old once completed
 		session, err := client.NewSession()
 		if err != nil {
-			log.Println("Session Error", cmd, input.Host, err.Error())
-			errors <- err.Error()
+			log.Println(input.Host, "Session Error", cmd, err.Error())
+			errors = append(errors, err.Error())
 			break
 		}
-		defer session.Close()
 
-		// getting output and errors pipe from sessions
-		stdout, err := session.StdoutPipe()
+		// executing the command
+		out, err := session.CombinedOutput(cmd)
 		if err != nil {
-			log.Println("Session outpipe", cmd, input.Host, err.Error())
-			errors <- err.Error()
+			log.Println(input.Host, "Command Error", cmd, err.Error())
+			errors = append(errors, err.Error())
+			session.Close()
 			break
 		}
-		stderr, err := session.StderrPipe()
-		if err != nil {
-			log.Println("Session errpipe", cmd, input.Host, err.Error())
-			errors <- err.Error()
-			break
-		}
+		log.Println(input.Host, "Running cmd --- Completed", cmd)
+		results = append(results, string(out))
+		session.Close()
 
-		// Getting result from command over session
-		str := fmt.Sprintf("%s [%s]", input.Host, cmd)
-		outCh, errCh, isCompleted := make(chan []byte), make(chan []byte), make(chan struct{})
-		go putDataToChan(outCh, stdout, fmt.Sprintf("Output %s", str))
-		go putDataToChan(errCh, stderr, fmt.Sprintf("Err %s", str))
-		go outputListener(str, isCompleted, results, errors, outCh, errCh)
-
-		// Calling run func to execure the single command
-		if err := session.Run(cmd); err != nil {
-			log.Println("Command Error", cmd, input.Host, err.Error())
-			errors <- err.Error()
-			break
-		}
-		<-isCompleted
 	}
+	return
 }
 
 func dialConn(input Input, f, kh string) (client *ssh.Client, err error) {
@@ -152,7 +134,7 @@ func putDataToChan(ch chan<- []byte, read io.Reader, t string) {
 	log.Println(t, " exited")
 }
 
-func outputListener(s string, isCompleted chan<- struct{}, results chan<- []byte, errors chan<- string, outCh <-chan []byte, errCh <-chan []byte) {
+func outputListener(s string, outCh <-chan []byte, errCh <-chan []byte) (results []string, errors []string) {
 	var o, e []byte
 	outOk, errOk := true, true
 	log.Println(s, "Listener entering ...")
@@ -160,11 +142,11 @@ func outputListener(s string, isCompleted chan<- struct{}, results chan<- []byte
 		select {
 		case o, outOk = <-outCh:
 			if outOk {
-				results <- o
+				results = append(results, string(o))
 			}
 		case e, errOk = <-errCh:
 			if errOk {
-				errors <- string(e)
+				errors = append(errors, string(e))
 			}
 		}
 		if (!outOk) && (!errOk) {
@@ -172,7 +154,7 @@ func outputListener(s string, isCompleted chan<- struct{}, results chan<- []byte
 		}
 	}
 	log.Println(s, "Listener exit")
-	isCompleted <- struct{}{}
+	return
 }
 
 // func checkKnownHosts() ssh.HostKeyCallback {

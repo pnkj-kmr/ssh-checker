@@ -40,32 +40,8 @@ func Execute(input Input, usr, passwd, rsa, kh string, p, t int) (out Output) {
 		input.Password = passwd
 	}
 
-	// calling main ssh executor func
-	outCh := make(chan []byte)
-	errCh := make(chan string)
-	go doSSH(input, rsa, kh, outCh, errCh)
-
-	// binding result to output and errors if any
-	var result []string
-	var errors []string
-	var x []byte
-	var e string
-	outOk, errOk := true, true
-	for {
-		select {
-		case x, outOk = <-outCh:
-			if outOk {
-				result = append(result, string(x))
-			}
-		case e, errOk = <-errCh:
-			if errOk {
-				errors = append(errors, e)
-			}
-		}
-		if (!outOk) && (!errOk) {
-			break
-		}
-	}
+	// doing the ssh to end device
+	result, errors := doSSH(input, rsa, kh)
 
 	// forming result Output
 	out.I = input
