@@ -1,9 +1,7 @@
 package internal
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -44,7 +42,7 @@ func doSSH(ind int, input Input, rsa, kh string) (results []string, errors []str
 			session.Close()
 			break
 		}
-		log.Println(ind, input.Host, "Running cmd --- Completed", cmd)
+		log.Println(ind, input.Host, "Running cmd completed ---", cmd)
 		results = append(results, string(out))
 		session.Close()
 
@@ -116,46 +114,46 @@ func dialConn(input Input, f, kh string) (client *ssh.Client, err error) {
 	return
 }
 
-func putDataToChan(ch chan<- []byte, read io.Reader, t string) {
-	defer close(ch)
-	log.Println(t, "started")
-	scanner := bufio.NewScanner(read)
-	for scanner.Scan() {
-		rcv := scanner.Bytes()
-		log.Println(t, ":", string(rcv))
-		ch <- rcv
-	}
-	if err := scanner.Err(); err != nil {
-		ch <- []byte(scanner.Err().Error())
-		log.Println(t, ":", scanner.Err().Error())
-	} else {
-		log.Println(t, ": io.EOF")
-	}
-	log.Println(t, " exited")
-}
+// func putDataToChan(ch chan<- []byte, read io.Reader, t string) {
+// 	defer close(ch)
+// 	log.Println(t, "started")
+// 	scanner := bufio.NewScanner(read)
+// 	for scanner.Scan() {
+// 		rcv := scanner.Bytes()
+// 		log.Println(t, ":", string(rcv))
+// 		ch <- rcv
+// 	}
+// 	if err := scanner.Err(); err != nil {
+// 		ch <- []byte(scanner.Err().Error())
+// 		log.Println(t, ":", scanner.Err().Error())
+// 	} else {
+// 		log.Println(t, ": io.EOF")
+// 	}
+// 	log.Println(t, " exited")
+// }
 
-func outputListener(s string, outCh <-chan []byte, errCh <-chan []byte) (results []string, errors []string) {
-	var o, e []byte
-	outOk, errOk := true, true
-	log.Println(s, "Listener entering ...")
-	for {
-		select {
-		case o, outOk = <-outCh:
-			if outOk {
-				results = append(results, string(o))
-			}
-		case e, errOk = <-errCh:
-			if errOk {
-				errors = append(errors, string(e))
-			}
-		}
-		if (!outOk) && (!errOk) {
-			break
-		}
-	}
-	log.Println(s, "Listener exit")
-	return
-}
+// func outputListener(s string, outCh <-chan []byte, errCh <-chan []byte) (results []string, errors []string) {
+// 	var o, e []byte
+// 	outOk, errOk := true, true
+// 	log.Println(s, "Listener entering ...")
+// 	for {
+// 		select {
+// 		case o, outOk = <-outCh:
+// 			if outOk {
+// 				results = append(results, string(o))
+// 			}
+// 		case e, errOk = <-errCh:
+// 			if errOk {
+// 				errors = append(errors, string(e))
+// 			}
+// 		}
+// 		if (!outOk) && (!errOk) {
+// 			break
+// 		}
+// 	}
+// 	log.Println(s, "Listener exit")
+// 	return
+// }
 
 // func checkKnownHosts() ssh.HostKeyCallback {
 // 	createKnownHosts()

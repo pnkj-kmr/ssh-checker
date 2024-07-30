@@ -31,16 +31,22 @@ func (c *_json) GetInput() (out []Input) {
 }
 
 func (c *_json) ProduceOutput(ch <-chan Output, exitCh chan<- struct{}) {
+	log.Println("reading the output...")
 	var out []Output
 	for r := range ch {
 		out = append(out, r)
 	}
 
-	outJson, _ := json.Marshal(out)
-	err := os.WriteFile(fmt.Sprintf("%s", c.ofile), outJson, 0644)
+	log.Println("data received", len(out), "| going to write as file")
+	outJson, err := json.Marshal(out)
 	if err != nil {
-		log.Fatal("Error while writing into file", err)
-	}
+		log.Fatal("Error while marshaling to json", err)
 
+	} else {
+		err = os.WriteFile(fmt.Sprintf("%s", c.ofile), outJson, 0644)
+		if err != nil {
+			log.Fatal("Error while writing into file", err)
+		}
+	}
 	exitCh <- struct{}{}
 }
