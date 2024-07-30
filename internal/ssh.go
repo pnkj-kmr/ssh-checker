@@ -24,7 +24,7 @@ func doSSH(ind int, input Input, rsa, kh string) (results []string, errors []str
 	// sshCompleted := make(chan struct{})
 	// total_commands := len(input.Commands)
 	for _, cmd := range input.Commands {
-		log.Println(ind, input.Host, "Running cmd ---", cmd)
+		log.Println(ind, input.Host, "Running cmd...", cmd)
 
 		// creating command based session and closing old once completed
 		session, err := client.NewSession()
@@ -42,7 +42,7 @@ func doSSH(ind int, input Input, rsa, kh string) (results []string, errors []str
 			session.Close()
 			break
 		}
-		log.Println(ind, input.Host, "Running cmd completed ---", cmd)
+		log.Println(ind, input.Host, "Running cmd completed...", cmd)
 		results = append(results, string(out))
 		session.Close()
 

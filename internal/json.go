@@ -31,13 +31,16 @@ func (c *_json) GetInput() (out []Input) {
 }
 
 func (c *_json) ProduceOutput(ch <-chan Output, exitCh chan<- struct{}) {
-	log.Println("reading the output...")
+	log.Println("initiate the read output...")
 	var out []Output
+	var counter int = 0
 	for r := range ch {
 		out = append(out, r)
+		counter++
+		log.Println(counter, "reading output...", r.I.Host)
 	}
 
-	log.Println("data received", len(out), "| going to write as file")
+	log.Println("data received", len(out), "| going to write as file -", c.ofile)
 	outJson, err := json.Marshal(out)
 	if err != nil {
 		log.Fatal("Error while marshaling to json", err)
