@@ -12,12 +12,12 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func doSSH(input Input, rsa, kh string) (results []string, errors []string) {
+func doSSH(ind int, input Input, rsa, kh string) (results []string, errors []string) {
 
 	// dialing the ssh connection
 	client, err := dialConn(input, rsa, kh)
 	if err != nil {
-		log.Println(input.Host, "Connection Error", err.Error())
+		log.Println(ind, input.Host, "Connection Error", err.Error())
 		errors = append(errors, err.Error())
 		return
 	}
@@ -26,12 +26,12 @@ func doSSH(input Input, rsa, kh string) (results []string, errors []string) {
 	// sshCompleted := make(chan struct{})
 	// total_commands := len(input.Commands)
 	for _, cmd := range input.Commands {
-		log.Println(input.Host, "Running cmd ---", cmd)
+		log.Println(ind, input.Host, "Running cmd ---", cmd)
 
 		// creating command based session and closing old once completed
 		session, err := client.NewSession()
 		if err != nil {
-			log.Println(input.Host, "Session Error", cmd, err.Error())
+			log.Println(ind, input.Host, "Session Error", cmd, err.Error())
 			errors = append(errors, err.Error())
 			break
 		}
@@ -39,12 +39,12 @@ func doSSH(input Input, rsa, kh string) (results []string, errors []string) {
 		// executing the command
 		out, err := session.CombinedOutput(cmd)
 		if err != nil {
-			log.Println(input.Host, "Command Error", cmd, err.Error())
+			log.Println(ind, input.Host, "Command Error", cmd, err.Error())
 			errors = append(errors, err.Error())
 			session.Close()
 			break
 		}
-		log.Println(input.Host, "Running cmd --- Completed", cmd)
+		log.Println(ind, input.Host, "Running cmd --- Completed", cmd)
 		results = append(results, string(out))
 		session.Close()
 

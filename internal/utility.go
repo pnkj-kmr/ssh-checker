@@ -25,7 +25,7 @@ func GetCommandLineInputs() (i, o, usr, pwd, key, kh string, p, t, w int) {
 	return *iFile, *oFile, *user, *passwd, *key_path, *hosts_path, *port, *timeout, *noWorkers
 }
 
-func Execute(input Input, usr, passwd, rsa, kh string, p, t int) (out Output) {
+func Execute(input Input, usr, passwd, rsa, kh string, p, t, ind int) (out Output) {
 	// binding input if empty from json
 	if input.Port == 0 {
 		input.Port = p
@@ -41,7 +41,7 @@ func Execute(input Input, usr, passwd, rsa, kh string, p, t int) (out Output) {
 	}
 
 	// doing the ssh to end device
-	result, errors := doSSH(input, rsa, kh)
+	result, errors := doSSH(ind, input, rsa, kh)
 
 	// forming result Output
 	out.I = input

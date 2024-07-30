@@ -53,11 +53,11 @@ func main() {
 	for i := 0; i < len(inputs); i++ {
 		wg.Add(1)
 		c <- 1
-		go func(input internal.Input, usr, passwd, rsa, kh string, p, t int) {
+		go func(input internal.Input, usr, passwd, rsa, kh string, p, t, ind int) {
 			defer func() { wg.Done(); <-c }()
-			out := internal.Execute(input, usr, passwd, rsa, kh, p, t)
+			out := internal.Execute(input, usr, passwd, rsa, kh, p, t, ind)
 			ch <- out
-		}(inputs[i], usr, passwd, rsa, kh, p, t)
+		}(inputs[i], usr, passwd, rsa, kh, p, t, i+1)
 		log.Println("Host sent for ssh -- ", inputs[i], i+1)
 	}
 	wg.Wait()
