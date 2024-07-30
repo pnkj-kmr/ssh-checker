@@ -24,3 +24,17 @@ type Output struct {
 	Err []string `json:"error,omitempty"`
 	O   []string `json:"output,omitempty"`
 }
+
+// CmdPipe helps to define the Command line Agrs
+type CmdPipe struct {
+	Ifile         string
+	Ofile         string
+	Workers       int
+	Port          int
+	Timeout       int
+	CircleTimeout int
+	Usr           string
+	Passwd        string
+	KeyPath       string
+	HostsPath     string
+}

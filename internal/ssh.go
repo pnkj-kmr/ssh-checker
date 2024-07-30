@@ -50,7 +50,7 @@ func doSSH(ind int, input Input, rsa, kh string) (results []string, errors []str
 	return
 }
 
-func dialConn(input Input, f, kh string) (client *ssh.Client, err error) {
+func dialConn(input Input, f, _ string) (client *ssh.Client, err error) {
 	homeDir := os.Getenv("HOME")
 	if f == "" {
 		if homeDir == "" {

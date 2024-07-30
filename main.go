@@ -4,7 +4,6 @@ import (
 	"log"
 	// _ "net/http/pprof"
 	"ssh-checker/internal"
-	"sync"
 	"time"
 )
 
@@ -38,29 +37,23 @@ func main() {
 	// mem_profile()
 
 	st := time.Now()
-	i, o, usr, passwd, rsa, kh, p, t, w := internal.GetCommandLineInputs()
+	cmdArgs := internal.GetCommandLineInputs()
 
-	checker := internal.NewJSON(i, o)
+	// init
+	checker := internal.NewJSON(cmdArgs.Ifile, cmdArgs.Ofile)
 	inputs := checker.GetInput()
-	log.Println("Total Items ----- ", len(inputs))
+	log.Println("Total items ----- ", len(inputs))
 
+	// Setting up the core channels
 	exitCh := make(chan struct{})
-	ch := make(chan internal.Output, w)
+	ch := make(chan internal.Output, cmdArgs.Workers)
 	go checker.ProduceOutput(ch, exitCh)
 
-	var wg sync.WaitGroup
-	c := make(chan int, w)
-	for i := 0; i < len(inputs); i++ {
-		wg.Add(1)
-		c <- 1
-		go func(input internal.Input, usr, passwd, rsa, kh string, p, t, ind int) {
-			defer func() { wg.Done(); <-c }()
-			out := internal.Execute(input, usr, passwd, rsa, kh, p, t, ind)
-			ch <- out
-		}(inputs[i], usr, passwd, rsa, kh, p, t, i+1)
-		log.Println("Host sent for ssh -- ", inputs[i], i+1)
+	// Calling main execution to proceed
+	err := internal.Execute(inputs, ch, cmdArgs)
+	if err != nil {
+		log.Fatal("Error during main execution -", err)
 	}
-	wg.Wait()
 	close(ch)
 	<-exitCh
 	log.Println("Execution completed. time taken", time.Since(st))

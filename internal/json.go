@@ -40,7 +40,7 @@ func (c *_json) ProduceOutput(ch <-chan Output, exitCh chan<- struct{}) {
 		log.Println(counter, "reading output...", r.I.Host)
 	}
 
-	log.Println("data received", len(out), "| going to write as file -", c.ofile)
+	log.Println("result received", len(out), "| going to write as file -", c.ofile)
 	outJson, err := json.Marshal(out)
 	if err != nil {
 		log.Fatal("Error while marshaling to json", err)
